@@ -2,11 +2,18 @@ package uniandes.interfaz;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
+import java.awt.event.MouseEvent;
 import java.util.Collection;
 import java.util.PriorityQueue;
 import java.awt.Dimension;
@@ -21,7 +28,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 
-import org.w3c.dom.events.MouseEvent;
+import com.formdev.flatlaf.FlatLightLaf;
 
 import uniandes.interfaz.PanelEntradas;
 
@@ -32,24 +39,26 @@ public class VentanaLightsOut extends JFrame implements ActionListener, MouseLis
     private Tablero tablero;
     // private PanelEntradas panelEntradas;
     private Top10 top10;
-    private RegistroTop10 registroTop10;
-    private int tamano;
-
+    private int tamano = 5;
+    private int dificultad;
+    private JPanel lightsOutGrid;
+    private JComboBox<String> comboBox;
     private JRadioButton easy, medium, hard;
     private JButton newGame, restartGame, showTop10, changePlayer;
 
-    public VentanaLightsOut() {
+    public VentanaLightsOut() throws FileNotFoundException, UnsupportedEncodingException {
         tablero = new Tablero(tamano);
+        top10 = new Top10();
         JFrame frame = new JFrame(); // creating instance of JFrame
-        frame.setSize(700, 700);
+        frame.setSize(1000, 800);
         frame.setLayout(new BorderLayout()); // using no layout managers
 
-        JPanel panel = getLightsOutGrid(5, 5);
+        lightsOutGrid = getLightsOutGrid(tamano, tamano);
         JPanel options = getGameOptions();
         JPanel info = getGameInfo();
         JPanel optionsPanel = getOptionsPanel();
 
-        frame.add(panel, BorderLayout.CENTER);
+        frame.add(lightsOutGrid, BorderLayout.CENTER);
         frame.add(options, BorderLayout.LINE_END);
         frame.add(info, BorderLayout.PAGE_END);
         frame.add(optionsPanel, BorderLayout.PAGE_START);
@@ -58,6 +67,14 @@ public class VentanaLightsOut extends JFrame implements ActionListener, MouseLis
         frame.setResizable(false);
         frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
         frame.setVisible(true);
+        this.setAction();
+
+        // Esto se usa para que al cerrar la ventana se salven los resultados
+        this.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+            }
+        });
+        top10.salvarRecords(new File("data/top10.csv"));
 
     }
 
@@ -71,7 +88,8 @@ public class VentanaLightsOut extends JFrame implements ActionListener, MouseLis
 
         String[] gridSizes = { "5x5", "6x6", "7x7", "8x8", "9x9", "10x10" };
 
-        JComboBox comboBox = new JComboBox(gridSizes);
+        comboBox = new JComboBox<>(gridSizes);
+        comboBox.addActionListener(this);
         label = new JLabel("Dificultad:");
         easy = new JRadioButton("Facil");
         medium = new JRadioButton("Medio");
@@ -97,11 +115,9 @@ public class VentanaLightsOut extends JFrame implements ActionListener, MouseLis
             JLabel label = new JLabel(); // creating instance of JLabel
             label.setIcon(new ImageIcon("data/luz.png"));
             label.addMouseListener(hml);
-            // Dimension size = label.getPreferredSize();
-            // label.setBounds(50, 30, size.width, size.height);
             panel.add(label);
         }
-        panel.setBorder(BorderFactory.createLineBorder(Color.blue));
+        panel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
         return panel;
 
     }
@@ -132,7 +148,7 @@ public class VentanaLightsOut extends JFrame implements ActionListener, MouseLis
         JLabel label = new JLabel("Jugadas: ");
         panel.add(label);
 
-        label = new JLabel("0");
+        label = new JLabel(tablero.darJugadas() + "");
         panel.add(label);
 
         label = new JLabel("Jugador: ");
@@ -148,7 +164,7 @@ public class VentanaLightsOut extends JFrame implements ActionListener, MouseLis
     public JFrame getTop10() {
         JFrame frame = new JFrame(); // creating instance of JFrame
         frame.setSize(250, 450);
-        frame.setLayout(new GridLayout(11, 1)); // using no layout managers
+        frame.setLayout(new GridLayout(11, 1));
 
         JLabel label = new JLabel("Jugador: Puntaje");
         frame.add(label);
@@ -180,8 +196,9 @@ public class VentanaLightsOut extends JFrame implements ActionListener, MouseLis
         changePlayer.addActionListener(this);
     }
 
-    public static void main(String args[]) {
+    public static void main(String args[]) throws FileNotFoundException, UnsupportedEncodingException {
         VentanaLightsOut v = new VentanaLightsOut();
+        // FlatLightLaf.install();
 
     }
 
@@ -189,51 +206,89 @@ public class VentanaLightsOut extends JFrame implements ActionListener, MouseLis
     public void actionPerformed(ActionEvent e) {
         e.getSource();
 
-        if (e.getSource() == easy)
+        if (e.getSource() == easy) {
             System.out.println("easy");
-        else if (e.getSource() == medium)
+            this.dificultad = 1;
+        } else if (e.getSource() == medium) {
             System.out.println("medium");
-        else if (e.getSource() == hard)
+            this.dificultad = 2;
+        } else if (e.getSource() == hard) {
             System.out.println("hard");
-        else if (e.getSource() == newGame)
+            this.dificultad = 3;
+        } else if (e.getSource() == newGame) {
             System.out.println("newGame");
-        else if (e.getSource() == restartGame)
+            tablero = new Tablero(tamano);
+            tablero.desordenar(this.dificultad);
+            lightsOutGrid.removeAll();
+            lightsOutGrid = getLightsOutGrid(tamano, tamano);
+            this.repaint();
+        } else if (e.getSource() == restartGame) {
             System.out.println("restartGame");
-        else if (e.getSource() == showTop10) {
-            System.out.println("showTop10");
+            tablero.reiniciar();
+        } else if (e.getSource() == showTop10) {
             getTop10();
+            System.out.println("showTop10");
         } else if (e.getSource() == changePlayer)
             System.out.println("changePlayer");
+        else if (e.getSource() == comboBox) {
+            System.out.println(tamano);
+            String selected = (String) comboBox.getSelectedItem();
+            String[] size = selected.split("x");
+            tamano = Integer.parseInt(size[0]);
+
+        }
     }
 
     @Override
-    public void mouseClicked(java.awt.event.MouseEvent e) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'mouseClicked'");
+    public void mouseClicked(MouseEvent e) {
+        System.out.println("mouseClicked");
     }
 
     @Override
-    public void mousePressed(java.awt.event.MouseEvent e) {
+    public void mousePressed(MouseEvent e) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'mousePressed'");
     }
 
     @Override
-    public void mouseReleased(java.awt.event.MouseEvent e) {
+    public void mouseReleased(MouseEvent e) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'mouseReleased'");
     }
 
     @Override
-    public void mouseEntered(java.awt.event.MouseEvent e) {
+    public void mouseEntered(MouseEvent e) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'mouseEntered'");
     }
 
     @Override
-    public void mouseExited(java.awt.event.MouseEvent e) {
+    public void mouseExited(MouseEvent e) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'mouseExited'");
+    }
+
+    public class HighlightMouseListener extends MouseAdapter {
+        private JLabel previous;
+
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            Component source = e.getComponent();
+            if (!(source instanceof JLabel)) {
+                return;
+            }
+            JLabel label = (JLabel) source;
+            if (previous != null) {
+                previous.setBackground(null);
+                previous.setForeground(null);
+                previous.setOpaque(false);
+            }
+            previous = label;
+            label.setForeground(Color.WHITE);
+            label.setBackground(Color.YELLOW);
+            label.setOpaque(true);
+        }
+
     }
 
 }
